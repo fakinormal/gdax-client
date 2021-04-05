@@ -126,7 +126,25 @@ class GdaxPriceClient:
         else:
             mid_point = Decimal((self._asks.peekitem(0)[0] + self._bids.peekitem(0)[0])/2)
             return mid_point
+    
+    def get_vwap(self):
+        '''
+        get_obook_price process
+        * if price feed is expired return None
+        * else do best ask + best bid then divide by 2 for midpoint
+        '''
+        if time.time() - self._last_obook_timestamp > self.expiry:
+            if not self._obook_expired:
+                self.logger.warning(f"Orderbook price feed from GDAX ({self.product_id}) has expired")
 
+            return None
+
+        else:
+            ask_px, ask_qty = self._asks.peekitem(0)
+            bid_px, bid_qty = self._bids.peekitem(0)
+            print("ask: ", ask_px, ask_qty, " bid: ", bid_px, bid_qty)
+            vwap = Decimal( (ask_px * bid_qty + bid_px * ask_qty) / (bid_qty + ask_qty) )
+            return vwap
 
     def _process_ticker(self, message_obj):
         self._last_price = Decimal(message_obj['price'])
@@ -190,7 +208,7 @@ class GdaxPriceClient:
         else:
             orderb_side[price] = amount
 
-        self.logger.debug(f"Orderbook price feed from GDAX is {self.get_obook_price()} ({self.product_id})")
+        self.logger.debug("Orderbook price feed from GDAX is %s (%s)" % (self.get_obook_price(),  self.product_id))
 
         return orderb_side
 
